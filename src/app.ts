@@ -13,6 +13,7 @@ dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
 
 import * as apiController from "./controllers/cat";
 import * as heroController from "./controllers/hero";
+import * as newController from "./controllers/news";
 
 // Create Koa server
 const app = new Koa();
@@ -67,8 +68,11 @@ app.use(async (ctx: ParameterizedContext, next:Next) => {
     // some errors will have .status
     // however this is not a guarantee
     ctx.status = err.status || 500;
-    ctx.type = 'html';
-    ctx.body = '<p>Something <em>exploded</em>, please contact Maru.</p>';
+    ctx.body = {
+      code:500,
+      result:err.message,
+      msg:'服务端异常'
+    };
 
     // since we handled this manually we'll
     // want to delegate to the regular app
@@ -90,6 +94,8 @@ app.on('error', function (err) {
 
 router.get('/cat', apiController.getCat);
 router.get('/baseHero', heroController.getBaseHero);
+router.get('/news', newController.getNews);
+router.get('/news/:itemId', newController.getNewDetail);
 
 
 
