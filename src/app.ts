@@ -1,63 +1,61 @@
-
 import Koa, { ParameterizedContext, Next } from 'koa';
-import koaBody from 'koa-body';
-import  logger from 'koa-logger'
-import mongoose from "mongoose";
-import bluebird from "bluebird";
 
-const dotenv = require('dotenv');
-const router = require('@koa/router')();
-const compress = require('koa-compress')
+import helmet from "koa-helmet";
+import cors from "@koa/cors";
+
+import { logger } from "./logger";
+import winston from "winston";
+
+import { cron } from "./cron";
+import bodyParser from "koa-bodyparser";
+
+import {unprotectedRouter} from './unprotectedRoutes';
+// import  logger from 'koa-logger';
+// import mongoose from "mongoose";
+// import bluebird from "bluebird";
+
+import dotenv from 'dotenv';
+import Router from '@koa/router';
+import compress  from 'koa-compress';
 
 dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
 
-import * as apiController from "./controllers/cat";
-import * as heroController from "./controllers/hero";
-import * as newController from "./controllers/news";
+
 
 // Create Koa server
 const app = new Koa();
 
 // Connect to MongoDB
 
-mongoose.Promise = bluebird;
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true } ).then(
-  () => { 
-    console.log('mongodb连接成功')
-    /** ready to use. The `mongoose.connect()` promise resolves to undefined. */ },
-).catch(err => {
-  console.log("MongoDB connection error. Please make sure MongoDB is running. " + err);
-  // process.exit();
-});
+// mongoose.Promise = bluebird;
+// mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true } ).then(
+//   () => { 
+//     console.log('mongodb连接成功')
+//     /** ready to use. The `mongoose.connect()` promise resolves to undefined. */ },
+// ).catch(err => {
+//   console.log("MongoDB connection error. Please make sure MongoDB is running. " + err);
+//   // process.exit();
+// });
 
 
+// Provides important security headers to make your app more secure
+app.use(helmet());
+
+ // Enable cors with default options
+ app.use(cors());
 
 
+// Logger middleware -> use winston as logger (logging.ts with config)
+app.use(logger(winston));
 
-app.use(logger((str: any, args: any) => {
-  console.log('logger', str);
-  // console.log('args',args)
+app.use(bodyParser());
 
-}));
+app.use(unprotectedRouter.routes);
 
-app.use(compress({
-  filter(content_type: any) {
-    return /text/i.test(content_type)
-  },
-  threshold: 2048,
-  gzip: {
-    flush: require('zlib').Z_SYNC_FLUSH
-  },
-  deflate: {
-    flush: require('zlib').Z_SYNC_FLUSH,
-  },
-  br: false // disable brotli
-}))
+ // Register cron job to do any action needed
+ cron.start();
 
 
-
-
-app.use(koaBody());
 
 // look ma, error propagation!
 
@@ -67,9 +65,11 @@ app.use(async (ctx: ParameterizedContext, next:Next) => {
   } catch (err) {
     // some errors will have .status
     // however this is not a guarantee
+
+    
     ctx.status = err.status || 500;
     ctx.body = {
-      code:500,
+      code:err.status ||500,
       result:err.message,
       msg:'服务端异常'
     };
@@ -86,16 +86,14 @@ app.use(async (ctx: ParameterizedContext, next:Next) => {
 // error handler
 
 app.on('error', function (err) {
-  if (process.env.NODE_ENV != 'test') {
+  if (process.env.NODE_ENV != 'development') {
     console.log('sent error %s to the cloud', err.message);
     console.log(err);
   }
 });
 
-router.get('/cat', apiController.getCat);
-router.get('/baseHero', heroController.getBaseHero);
-router.get('/news', newController.getNews);
-router.get('/news/:itemId', newController.getNewDetail);
+const router = new Router();
+
 
 
 
