@@ -55,7 +55,7 @@
     "@koa/cors": "^3.1.0",
     "@koa/router": "^8.0.8",
     "@types/cron": "^1.7.2",
-    "async": "^3.2.0",
+    "async": "^3.2.2",
     "bluebird": "^3.7.2",
     "chalk": "^4.0.0",
     "compression": "^1.7.4",
